@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "gcmp": {
+      "commandName": "Project",
+      "commandLineArgs": "He are my command args"
+    }
+  }
+}

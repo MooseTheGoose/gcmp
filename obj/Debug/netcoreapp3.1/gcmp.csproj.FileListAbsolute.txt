@@ -1,0 +1,11 @@
+C:\Users\s198\gcmp\obj\Debug\netcoreapp3.1\gcmp.csprojAssemblyReference.cache
+C:\Users\s198\gcmp\obj\Debug\netcoreapp3.1\gcmp.AssemblyInfoInputs.cache
+C:\Users\s198\gcmp\obj\Debug\netcoreapp3.1\gcmp.AssemblyInfo.cs
+C:\Users\s198\gcmp\bin\Debug\netcoreapp3.1\gcmp.exe
+C:\Users\s198\gcmp\bin\Debug\netcoreapp3.1\gcmp.deps.json
+C:\Users\s198\gcmp\bin\Debug\netcoreapp3.1\gcmp.runtimeconfig.json
+C:\Users\s198\gcmp\bin\Debug\netcoreapp3.1\gcmp.runtimeconfig.dev.json
+C:\Users\s198\gcmp\bin\Debug\netcoreapp3.1\gcmp.dll
+C:\Users\s198\gcmp\bin\Debug\netcoreapp3.1\gcmp.pdb
+C:\Users\s198\gcmp\obj\Debug\netcoreapp3.1\gcmp.dll
+C:\Users\s198\gcmp\obj\Debug\netcoreapp3.1\gcmp.pdb

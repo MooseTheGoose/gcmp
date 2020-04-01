@@ -14,11 +14,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\s198\\gcmp\\gcmp\\gcmp.csproj",
+      "projectUniqueName": "C:\\Users\\s198\\gcmp\\gcmp.csproj",
       "projectName": "gcmp",
-      "projectPath": "C:\\Users\\s198\\gcmp\\gcmp\\gcmp.csproj",
+      "projectPath": "C:\\Users\\s198\\gcmp\\gcmp.csproj",
       "packagesPath": "C:\\Users\\s198\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\s198\\gcmp\\gcmp\\obj\\",
+      "outputPath": "C:\\Users\\s198\\gcmp\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
