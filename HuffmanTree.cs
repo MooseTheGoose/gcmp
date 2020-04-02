@@ -6,6 +6,9 @@ namespace gcmp
 {
     /*
      * NOTE: Huffman Tree only supports compression of ASCII characters.
+     *
+     * INTERNAL NODES: symbol < 0
+     * EXTERNAL NODES: 0 <= symbol <= 255
      */
     public class HuffmanTree
     {
@@ -70,7 +73,7 @@ namespace gcmp
             return root;
         }
 
-        public int CompressChar(byte[] bits, int currLen, char c)
+        public int CompressChar(byte[] bits, int currLen, byte c)
         {
             if (this.symbol == c)
             {
@@ -94,8 +97,7 @@ namespace gcmp
             return 0;
         }
 
-        /* TO-DO: Change from string to byte[] */
-        public int[] Compress(string text)
+        public int[] Compress(byte[] text)
         {
             List<int> bits = new List<int>();
             bits.Add(0);
@@ -118,9 +120,13 @@ namespace gcmp
             return bits.ToArray();
         }
 
-        public string Decompress(int[] bits, int decompLength)
+        /*
+         * Not strictly necessary. This is a sanity check method.
+         * Consider making this a method in a separate class.
+         */
+        public byte[] Decompress(int[] bits, int decompLength)
         {
-            StringBuilder builder = new StringBuilder("");
+            byte[] builder = new byte[decompLength];
             HuffmanTree currNode = this;
             int bitpos = 0;
 
@@ -143,7 +149,7 @@ namespace gcmp
                     }
                     else
                     {
-                        builder.Append((char)currNode.symbol);
+                        builder[i] = (byte)currNode.symbol;
                         currNode = this;
                         break;
                     }
@@ -152,7 +158,7 @@ namespace gcmp
                 }
             }
 
-            return builder.ToString();
+            return builder;
         }
 
         public static void PrintTree(HuffmanTree tree, int indent)
