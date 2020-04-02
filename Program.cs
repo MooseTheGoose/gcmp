@@ -7,7 +7,6 @@ namespace gcmp
 {
     class Program
     {
-        static int dataSize = 8;
 
         static void AddByte(Dictionary<int, int> freqTable, int b)
         {
@@ -31,17 +30,19 @@ namespace gcmp
 
         static void Main(string[] args)
         {
-            int[] compressedBits;
-            byte[] strArray = GcmpIO.ReadFile("/Users/yoyomoose/Desktop/gcmp/test.txt");
+            uint[] compressedBits;
+            byte[] strArray = GcmpIO.ReadFile("C:\\\\Users\\s198\\gcmp\\test.txt");
             Dictionary<int, int> table = new Dictionary<int, int>();
 
             AddStream(table, strArray);
             byte[] confirm = new byte[strArray.Length];
 
             HuffmanTree root = HuffmanTree.Construct(table);
+            HuffmanBiosTree bios = new HuffmanBiosTree(root);
             HuffmanTree.PrintTree(root, 0);
+            HuffmanTree.PrintTree(bios.ConvertToHuffman(), 0);
             compressedBits = root.Compress(strArray);
-            confirm  = root.Decompress(compressedBits, strArray.Length);
+            confirm  = bios.ConvertToHuffman().Decompress(compressedBits, strArray.Length);
             foreach (byte b in confirm)
             {
                 Console.Write((char)b);
@@ -49,8 +50,9 @@ namespace gcmp
             Console.WriteLine();
             Console.WriteLine(compressedBits.Length * 32 + " vs. " + strArray.Length * 8);
 
-            HuffmanBiosTree bios = new HuffmanBiosTree(root);
             bios.PrintBiosTree();
+            GcmpIO.OutputHuffmanBiosAssembly("C:\\\\Users\\s198\\gcmp\\test.asm", bios);
+            GcmpIO.OutputCompressedBitstreamAssembly("C:\\\\Users\\s198\\gcmp\\bitstream.asm", compressedBits, "bitstream_t");
         }
     }
 }

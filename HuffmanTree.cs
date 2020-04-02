@@ -97,9 +97,9 @@ namespace gcmp
             return 0;
         }
 
-        public int[] Compress(byte[] text)
+        public uint[] Compress(byte[] text)
         {
-            List<int> bits = new List<int>();
+            List<uint> bits = new List<uint>();
             bits.Add(0);
             int nbits = 0;
             byte[] charBits = new byte[256];
@@ -110,7 +110,7 @@ namespace gcmp
 
                 for (int j = 0; j < final; j++)
                 {
-                    bits[nbits >> 5] |= charBits[j] << (~nbits & 31);
+                    bits[nbits >> 5] |= (uint)charBits[j] << (~nbits & 31);
 
                     nbits++;
                     if ((nbits & 31) == 0) { bits.Add(0); }
@@ -124,7 +124,7 @@ namespace gcmp
          * Not strictly necessary. This is a sanity check method.
          * Consider making this a method in a separate class.
          */
-        public byte[] Decompress(int[] bits, int decompLength)
+        public byte[] Decompress(uint[] bits, int decompLength)
         {
             byte[] builder = new byte[decompLength];
             HuffmanTree currNode = this;
@@ -134,7 +134,7 @@ namespace gcmp
             {
                 while (true)
                 {
-                    int currBit = bits[bitpos >> 5] >> (~bitpos & 31) & 1;
+                    uint currBit = bits[bitpos >> 5] >> (~bitpos & 31) & 1;
 
                     if (currNode.symbol < 0)
                     {
