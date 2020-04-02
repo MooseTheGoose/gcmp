@@ -52,7 +52,7 @@ namespace gcmp
 
             bios.PrintBiosTree();
             GcmpIO.OutputHuffmanBiosAssembly("C:\\\\Users\\s198\\gcmp\\test.asm", bios);
-            GcmpIO.OutputCompressedBitstreamAssembly("C:\\\\Users\\s198\\gcmp\\bitstream.asm", compressedBits, "bitstream_t");
+            GcmpIO.OutputCompressedBitstreamAssembly("C:\\\\Users\\s198\\gcmp\\bitstream.asm", compressedBits, (uint)strArray.Length << 8 | 2 << 4 | 8);
         }
     }
 }

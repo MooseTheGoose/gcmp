@@ -6,6 +6,11 @@ namespace gcmp
 {
     public class GcmpIO
     {
+        /*
+         * Read string of bytes and pad with 0's to align
+         * the size by 4.
+         */
+
         public static byte[] ReadFile(string fname)
         {
             List<byte> bytes = new List<byte>();
@@ -19,6 +24,8 @@ namespace gcmp
                     bytes.AddRange(read);
                 }
                 while (read.Length == 512);
+
+            while ((bytes.Count & 3) != 0) { bytes.Add(0); }
 
             return bytes.ToArray();
         }
@@ -72,15 +79,19 @@ namespace gcmp
             }
         }
 
-        public static void OutputCompressedBitstreamAssembly(string asmName, uint[] compressed, string compressedName)
+        public static void OutputCompressedBitstreamAssembly(string asmName, uint[] compressed, uint header)
         {
             int j = 0;
             
             using (StreamWriter sw = new StreamWriter(asmName))
             {
-                sw.WriteLine("EXTERN " + compressedName);
+                sw.WriteLine("EXTERN bitstream");
+                sw.WriteLine("EXTERN huffmanHeader");
                 sw.WriteLine();
-                sw.Write(compressedName + ":");
+                sw.WriteLine("huffmanHeader:");
+                sw.WriteLine(String.Format("    DD 0x{0:X8}", header));
+                sw.WriteLine();
+                sw.Write("bitstream:");
                 for (int i = 0; i < compressed.Length; i++)
                 {
                     if ((j & 7) == 0)
