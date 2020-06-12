@@ -125,14 +125,33 @@ std::vector<LZRecord> LZCompress(const LZInfo *info, const std::vector<char> byt
     return records;
 }
 
-std::vector<char> HuffmanCompress(std::vector<char> bytes, 
-                                  HuffmanRecord **huffptr)
+int32_t HuffStream(HuffmanRecord *rec, char *buffer, int32_t index, char ch)
+{
+    if(rec->left)
+    {
+        int32_t size;
+        buffer[index] = 0;
+        size = HuffStream(rec->left, buffer, index+1, ch);
+        if(size >= 0) { return size; }
+        buffer[index] = 1;
+        return HuffStream(rec->right, buffer, index+1, ch);
+    }
+    else
+    { 
+        if(rec->byte != ch) { return -1; }
+        return index;
+    }
+}
+
+std::vector<uint32_t> HuffmanCompress(std::vector<char> bytes,
+                                      HuffmanRecord **huffptr)
 {
     std::vector<HuffmanRecord *> records = std::vector<HuffmanRecord *>();
     HuffmanRecord *root;
-    std::vector<char> compressed = std::vector<char>();
+    std::vector<uint32_t> bitstream = std::vector<uint32_t>();
+    char buffer[512];
 
-    if(bytes.size() == 0) { *huffptr = NULL; return compressed; }
+    if(bytes.size() == 0) { *huffptr = NULL; return bitstream; }
 
     for(int32_t i = 0; i < bytes.size(); i++)
     {
@@ -199,9 +218,31 @@ std::vector<char> HuffmanCompress(std::vector<char> bytes,
         }
     }
 
-    *huffptr = records[0];
+    root = records[0];
+    *huffptr = root;
 
-    return compressed;
+    uint32_t currint = 0;
+    int shift = 31;
+
+    for(int32_t i = 0; i < bytes.size(); i++)
+    {
+        int32_t size = HuffStream(root, buffer, 0, bytes[i]);
+
+        for(int32_t j = 0; j < size; j++)
+        {
+            currint |= buffer[j] << shift;
+            shift--;
+            if(shift < 0)
+            {
+                shift += 32;
+                bitstream.push_back(currint);
+            }
+        }
+    }
+
+    if(shift != 31) { bitstream.push_back(currint); }
+
+    return bitstream;
 }
 
 std::vector<char> Diff8Filter(std::vector<char> bytes)
@@ -295,6 +336,8 @@ std::vector<char> RlEncode(std::vector<RLRecord> records)
         uncomp.clear();
     }
 
+    while(encoding.size() & 3) { encoding.push_back(0); }
+
     return encoding;
 }
 
@@ -348,15 +391,139 @@ std::vector<char> LZEncode(std::vector<LZRecord> records)
         block_bytes.clear();
     }
 
+    while(encoding.size() & 3) { encoding.push_back(0); }
+
     return encoding;
 }
 
-std::vector<char> HuffmanEncode(std::vector<char> compressed,
-                                HuffmanRecord *root)
+struct HuffData 
+{ 
+    union { uint8_t ofs; uint8_t byte; } data[2]; 
+    uint8_t is_byte[2];
+};
+
+struct HuffPair
+{ 
+    HuffmanRecord *left, *right; 
+    uint8_t parent, index; 
+};
+
+std::vector<char> HuffmanEncode(HuffmanRecord *root,
+                                std::vector<uint32_t> bitstream)
 {
     std::vector<char> encoding = std::vector<char>();
 
-    return encoding;    
+    HuffData curr_data;
+    HuffPair curr_pair;
+
+    std::vector<HuffPair> pair_queue = std::vector<HuffPair>();
+    uint32_t head = 0;
+    std::vector<HuffData> data = std::vector<HuffData>(); 
+
+    curr_pair.left = root->left;
+    curr_pair.right = root->right;
+    curr_pair.parent = 0;
+    curr_pair.index = 1;
+    pair_queue.push_back(curr_pair);
+    data.push_back(curr_data);
+    
+
+    while(head < pair_queue.size())
+    {
+        HuffmanRecord *left = pair_queue[head].left,
+                      *right = pair_queue[head].right;
+
+        uint8_t parent = pair_queue[head].parent;
+        uint8_t index = pair_queue[head].index;
+        data[parent].data[index].ofs = head - parent;
+
+        if(left->left) 
+        {
+            curr_data.is_byte[0] = 0;
+            curr_pair.left = left->left;
+            curr_pair.right = left->right;
+            curr_pair.parent = head + 1;
+            curr_pair.index = 0;
+            pair_queue.push_back(curr_pair);
+        }
+        else
+        {
+            curr_data.is_byte[0] = 1;
+            curr_data.data[0].byte = left->byte;
+        }
+
+        if(right->left)
+        {
+            curr_data.is_byte[1] = 0;
+            curr_pair.left = right->left;
+            curr_pair.right = right->right;
+            curr_pair.parent = head + 1;
+            curr_pair.index = 1;
+            pair_queue.push_back(curr_pair);
+        }
+        else
+        {
+            curr_data.is_byte[1] = 1;
+            curr_data.data[1].byte = right->byte;
+        }
+
+        data.push_back(curr_data);
+        head++;
+    }
+
+    pair_queue.clear();
+
+    char node0,
+         node1 = 0;
+    encoding.push_back(data.size());
+    if(data[0].is_byte[0]) { node1 |= 1 << 7; }
+    if(data[0].is_byte[1]) { node1 |= 1 << 6; }
+    encoding.push_back(node1);
+
+    for(int32_t i = 1; i < data.size(); i++)
+    {
+        if(data[i].is_byte[0])
+        {
+            node0 = data[i].data[0].byte;
+        }
+        else
+        {
+            uint8_t ofs = data[i].data[0].ofs;
+            if(ofs > 64) { return std::vector<char>(); }
+            node0 = ofs;
+            if(data[ofs].is_byte[0]) { node0 |= 1 << 7; }
+            if(data[ofs].is_byte[1]) { node0 |= 1 << 6; }
+        }
+
+        if(data[i].is_byte[1])
+        {
+            node1 = data[i].data[1].byte;
+        }
+        else
+        {
+            uint8_t ofs = data[i].data[1].ofs;
+            if(ofs > 64) { return std::vector<char>(); }
+            node1 = ofs;
+            if(data[ofs].is_byte[0]) { node1 |= 1 << 7; }
+            if(data[ofs].is_byte[1]) { node1 |= 1 << 6; }
+        }
+        
+        encoding.push_back(node0);
+        encoding.push_back(node1);
+    }
+
+    while(encoding.size() & 3) { encoding.push_back(0); }
+
+    for(int32_t i = 0; i < bitstream.size(); i++)
+    {
+        uint32_t currint = bitstream[i];
+        encoding.push_back(((const char *)&currint)[0]);
+        encoding.push_back(((const char *)&currint)[1]);
+        encoding.push_back(((const char *)&currint)[2]);
+        encoding.push_back(((const char *)&currint)[3]);
+    }
+
+    return encoding;
 }
 
 void DebugTree(HuffmanRecord *node, int offset)
