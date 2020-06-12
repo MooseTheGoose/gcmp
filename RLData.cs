@@ -34,14 +34,14 @@ namespace gcmp
                 {
                     byte repeat = stream[i];
 
-                    if (currLength != 0)
+                    if (currLength > 0)
                     {
                         data.Add((byte)(currLength - 1));
                         for (int j = i - currLength; j < i; j++) { data.Add(stream[j]);  }  
                     }
 
                     currLength = 3;
-                    while (i < stream.Length - 3 && repeat == stream[i + 3] && currLength <= MaxExpandLen + 3)
+                    while (i < stream.Length - 3 && repeat == stream[i + 3] && currLength < MaxExpandLen + 3)
                     {
                         currLength++;
                         i++;

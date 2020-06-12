@@ -79,7 +79,7 @@ namespace gcmp
             }
         }
 
-        public static void OutputCompressedBitstreamAssembly(string asmName, uint[] compressed, uint header)
+        public static void OutputCompressedBitstreamsAssembly(string asmName, uint[] compressed, uint header)
         {
             int j = 0;
             
@@ -106,6 +106,20 @@ namespace gcmp
                     j++;
                 }
             }
+        }
+
+        public static HuffmanTree HuffmanTreeFromBinary(string binFile)
+        {
+            HuffmanBiosTree bios;
+            bios.nodes = new List<byte>();
+
+            using (BinaryReader rdr = new BinaryReader(new FileStream(binFile, FileMode.Open)))
+            {
+                rdr.ReadByte();                            /* Tree size. Ignore. */
+                bios.nodes.AddRange(rdr.ReadBytes(1024));
+            }
+
+            return bios.ConvertToHuffman();
         }
 
         public GcmpIO()
