@@ -125,12 +125,14 @@ std::vector<LZRecord> LZCompress(const LZInfo *info, const std::vector<char> byt
     return records;
 }
 
-HuffmanRecord *HuffmanCompress(std::vector<char> bytes)
+std::vector<char> HuffmanCompress(std::vector<char> bytes, 
+                                  HuffmanRecord **huffptr)
 {
     std::vector<HuffmanRecord *> records = std::vector<HuffmanRecord *>();
     HuffmanRecord *root;
+    std::vector<char> compressed = std::vector<char>();
 
-    if(bytes.size() == 0) { return NULL; }
+    if(bytes.size() == 0) { *huffptr = NULL; return compressed; }
 
     for(int32_t i = 0; i < bytes.size(); i++)
     {
@@ -197,7 +199,9 @@ HuffmanRecord *HuffmanCompress(std::vector<char> bytes)
         }
     }
 
-    return records[0];
+    *huffptr = records[0];
+
+    return compressed;
 }
 
 std::vector<char> Diff8Filter(std::vector<char> bytes)
@@ -332,6 +336,8 @@ std::vector<char> LZEncode(std::vector<LZRecord> records)
             { encoding.push_back(block_bytes[j]); }
             block_bytes.clear();
         }
+
+        records.pop_back();
     }
 
     if(shift != 7)
@@ -345,9 +351,12 @@ std::vector<char> LZEncode(std::vector<LZRecord> records)
     return encoding;
 }
 
-void HuffmanEncode(HuffmanRecord *root, std::vector<char> &table)
+std::vector<char> HuffmanEncode(std::vector<char> compressed,
+                                HuffmanRecord *root)
 {
-    uint8_t ofs;
+    std::vector<char> encoding = std::vector<char>();
+
+    return encoding;    
 }
 
 void DebugTree(HuffmanRecord *node, int offset)
@@ -396,7 +405,7 @@ int main()
 
     rlrecords = RLCompress(bytes);
     lzrecords = LZCompress(&default_info, bytes);
-    root = HuffmanCompress(bytes);
+    HuffmanCompress(bytes, &root);
 
     for(int32_t i = 0; i < rlrecords.size(); i++)
     {
