@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <vector>
 #include <stdint.h>
-#include <string>
 #include <string.h>
 
 struct RLRecord
@@ -38,11 +37,83 @@ struct HuffmanRecord
 
 struct LZInfo
 {
-    int32_t max_window;
     int32_t min_window;
-    int32_t max_disp;
+    int32_t max_window;
     int32_t min_disp; 
+    int32_t max_disp;
 };
+
+
+std::vector<uint32_t> Bytes2Ints(std::vector<char> data)
+{
+    std::vector<uint32_t> newdata = std::vector<uint32_t>();
+
+    int32_t padlen = 0;
+    while(data.size() & 3) { data.push_back(0); padlen++; } 
+
+    for(int32_t i = 0; i < data.size(); i += 4)
+    {
+        uint8_t *dataptr = (uint8_t *)&data[i];
+        newdata.push_back(
+            dataptr[0] | dataptr[1] << 8 
+            | dataptr[2] << 16 | dataptr[3] << 24
+        );
+    }
+
+    while(padlen--) { data.pop_back(); }
+    return newdata;
+}
+
+std::vector<uint16_t> Bytes2Shorts(std::vector<char> data)
+{
+    std::vector<uint16_t> newdata = std::vector<uint16_t>();
+
+    int32_t padlen = 0;
+    while(data.size() & 1) { data.push_back(0); padlen++; } 
+
+    for(int32_t i = 0; i < data.size(); i += 2)
+    {
+        uint8_t *dataptr = (uint8_t *)&data[i];
+        newdata.push_back(
+            dataptr[0] | dataptr[1] << 8
+        );
+    }
+
+    while(padlen--) { data.pop_back(); }
+    return newdata;
+}
+
+std::vector<char> Ints2Bytes(std::vector<uint32_t> data)
+{
+    std::vector<char> newdata = std::vector<char>();
+
+    for(int32_t i = 0; i < data.size(); i++)
+    {
+        uint32_t curint = data[i];
+
+        newdata.push_back(curint & 0xFF);
+        newdata.push_back(curint >> 8 & 0xFF);
+        newdata.push_back(curint >> 16 & 0xFF);
+        newdata.push_back(curint >> 24 & 0xFF);
+    }
+
+    return newdata;
+}
+
+std::vector<char> Shorts2Bytes(std::vector<uint16_t> data)
+{
+    std::vector<char> newdata = std::vector<char>();
+
+    for(int32_t i = 0; i < data.size(); i++)
+    {
+        uint16_t curshort = data[i];
+
+        newdata.push_back(curshort & 0xFF);
+        newdata.push_back(curshort >> 8 & 0xFF);
+    }
+
+    return newdata;
+}
 
 std::vector<RLRecord> RLCompress(const std::vector<char> bytes)
 {
@@ -78,7 +149,7 @@ std::vector<RLRecord> RLCompress(const std::vector<char> bytes)
  *  NOTE: LZRecords stored in reverse
  */
 
-std::vector<LZRecord> LZCompress(const LZInfo *info, const std::vector<char> bytes)
+std::vector<LZRecord> LZCompress(const std::vector<char> bytes, const LZInfo info)
 {
     std::vector<LZRecord> records = std::vector<LZRecord>();
     LZRecord curr_record;
@@ -87,15 +158,15 @@ std::vector<LZRecord> LZCompress(const LZInfo *info, const std::vector<char> byt
 
     while(end > 0)
     {
-        int32_t windowlen = info->max_window;
+        int32_t windowlen = info.max_window;
         int windowfound = 0;
 
-        while(windowlen >= info->min_window)
+        while(windowlen >= info.min_window)
         {
-            int32_t start = end - windowlen - info->min_disp;
+            int32_t start = end - windowlen - info.min_disp;
             int32_t window = end - windowlen;
             
-            while(start > 0 && window-start <= info->max_disp)
+            while(start > 0 && window-start <= info.max_disp)
             {
                 if(!memcmp(data + start, data + window, windowlen))
                 {
@@ -105,7 +176,7 @@ std::vector<LZRecord> LZCompress(const LZInfo *info, const std::vector<char> byt
 
                     end -= windowlen;
                     start = 1;
-                    windowlen = info->min_window;
+                    windowlen = info.min_window;
                     windowfound = 1;
                 }
                 start--;
@@ -167,7 +238,7 @@ std::vector<uint32_t> HuffmanCompress(std::vector<char> bytes,
         if(j == records.size())
         {
             new_record = new HuffmanRecord();
-            new_record->byte = bytes[j];
+            new_record->byte = bytes[i];
             new_record->freq = 1;
             new_record->left = 0;
             new_record->right = 0;
@@ -181,11 +252,13 @@ std::vector<uint32_t> HuffmanCompress(std::vector<char> bytes,
 
         for(int32_t j = 0; j < records.size()-1-i; j++)
         {
-            if(records[j+1]->freq < records[j]->freq)
+            if(records[j+1]->freq > records[j]->freq)
             {
                 HuffmanRecord *temp = records[j];
                 records[j] = records[j+1];
                 records[j+1] = temp;
+
+                swapped = 1;
             }           
         }
 
@@ -236,6 +309,7 @@ std::vector<uint32_t> HuffmanCompress(std::vector<char> bytes,
             {
                 shift += 32;
                 bitstream.push_back(currint);
+                currint = 0;
             }
         }
     }
@@ -281,7 +355,7 @@ std::vector<uint16_t> Diff16Filter(std::vector<uint16_t> shorts)
     return diff;
 }
 
-std::vector<char> RlEncode(std::vector<RLRecord> records)
+std::vector<char> RLEncode(std::vector<RLRecord> records)
 {
     std::vector<char> encoding = std::vector<char>();
     std::vector<char> uncomp = std::vector<char>();
@@ -358,13 +432,14 @@ std::vector<char> LZEncode(std::vector<LZRecord> records)
         if(flag < 0)
         {
             char byte = records[i].data.byte;
-            block_bytes.push_back(byte);           
+            block_bytes.push_back(byte);        
         }
         else
         {
             int32_t disp = records[i].data.disp;
             int32_t len = records[i].flag.len;
             flag_byte |= 1 << shift;
+
             block_bytes.push_back(disp - min_disp >> 8 & 0xF 
                                   | len - min_window << 4 & 0xF0);
             block_bytes.push_back(disp - min_disp & 0xFF);
@@ -378,6 +453,8 @@ std::vector<char> LZEncode(std::vector<LZRecord> records)
             for(int32_t j = 0; j < block_bytes.size(); j++)
             { encoding.push_back(block_bytes[j]); }
             block_bytes.clear();
+
+            flag_byte = 0;
         }
 
         records.pop_back();
@@ -426,7 +503,6 @@ std::vector<char> HuffmanEncode(HuffmanRecord *root,
     curr_pair.index = 1;
     pair_queue.push_back(curr_pair);
     data.push_back(curr_data);
-    
 
     while(head < pair_queue.size())
     {
@@ -472,12 +548,13 @@ std::vector<char> HuffmanEncode(HuffmanRecord *root,
     }
 
     pair_queue.clear();
+    if(data.size() & 1) { data.push_back(curr_data); } 
 
     char node0,
          node1 = 0;
-    encoding.push_back(data.size());
-    if(data[0].is_byte[0]) { node1 |= 1 << 7; }
-    if(data[0].is_byte[1]) { node1 |= 1 << 6; }
+    encoding.push_back(data.size()-1);
+    if(data[1].is_byte[0]) { node1 |= 1 << 7; }
+    if(data[1].is_byte[1]) { node1 |= 1 << 6; }
     encoding.push_back(node1);
 
     for(int32_t i = 1; i < data.size(); i++)
@@ -491,8 +568,8 @@ std::vector<char> HuffmanEncode(HuffmanRecord *root,
             uint8_t ofs = data[i].data[0].ofs;
             if(ofs > 64) { return std::vector<char>(); }
             node0 = ofs;
-            if(data[ofs].is_byte[0]) { node0 |= 1 << 7; }
-            if(data[ofs].is_byte[1]) { node0 |= 1 << 6; }
+            if(data[i+ofs+1].is_byte[0]) { node0 |= 1 << 7; }
+            if(data[i+ofs+1].is_byte[1]) { node0 |= 1 << 6; }
         }
 
         if(data[i].is_byte[1])
@@ -504,24 +581,17 @@ std::vector<char> HuffmanEncode(HuffmanRecord *root,
             uint8_t ofs = data[i].data[1].ofs;
             if(ofs > 64) { return std::vector<char>(); }
             node1 = ofs;
-            if(data[ofs].is_byte[0]) { node1 |= 1 << 7; }
-            if(data[ofs].is_byte[1]) { node1 |= 1 << 6; }
+            if(data[i+ofs+1].is_byte[0]) { node1 |= 1 << 7; }
+            if(data[i+ofs+1].is_byte[1]) { node1 |= 1 << 6; }
         }
         
         encoding.push_back(node0);
         encoding.push_back(node1);
     }
 
-    while(encoding.size() & 3) { encoding.push_back(0); }
-
-    for(int32_t i = 0; i < bitstream.size(); i++)
-    {
-        uint32_t currint = bitstream[i];
-        encoding.push_back(((const char *)&currint)[0]);
-        encoding.push_back(((const char *)&currint)[1]);
-        encoding.push_back(((const char *)&currint)[2]);
-        encoding.push_back(((const char *)&currint)[3]);
-    }
+    std::vector<char> bitstream_bytes = Ints2Bytes(bitstream);
+    for(int32_t i = 0; i < bitstream_bytes.size(); i++)
+    { encoding.push_back(bitstream_bytes[i]); }
 
     return encoding;
 }
@@ -547,53 +617,4 @@ void DebugTree(HuffmanRecord *node, int offset)
     }
 
     delete[] spaces;
-}
-
-std::string str = "AAAA     B CCC DEED ASD";
-
-int main()
-{
-    std::vector<char> bytes = std::vector<char>();
-    std::vector<RLRecord> rlrecords;
-    std::vector<LZRecord> lzrecords;
-    LZInfo default_info;
-    HuffmanRecord *root;
-
-    default_info.min_window = 3;
-    default_info.max_window = 18;
-    default_info.min_disp = 1;
-    default_info.max_disp = 1 << 12;
-
-    bytes.reserve(str.length());
-    for(int32_t i = 0; i < str.length(); i++)
-    {
-        bytes.push_back(str[i]);
-    }
-
-    rlrecords = RLCompress(bytes);
-    lzrecords = LZCompress(&default_info, bytes);
-    HuffmanCompress(bytes, &root);
-
-    for(int32_t i = 0; i < rlrecords.size(); i++)
-    {
-        printf("DATA:          %c\n", rlrecords[i].byte);
-        printf("LEN:           %d\n\n", rlrecords[i].len);   
-    }
-
-    for(int32_t i = 0; i < lzrecords.size(); i++)
-    {
-        if(lzrecords[i].flag.negative < 0)
-        {
-            printf("LZDATA:             %c\n\n", lzrecords[i].data.byte);
-        }   
-        else
-        {
-            printf("LZDISP:             %d\n", lzrecords[i].data.disp);
-            printf("LZLEN:              %d\n\n", lzrecords[i].flag.len);
-        }
-    }
-
-    DebugTree(root, 0);
-
-    return 0;
 }

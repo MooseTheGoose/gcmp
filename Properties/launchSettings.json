@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "gcmp": {
-      "commandName": "Project",
-      "commandLineArgs": "\"This is a test\""
-    }
-  }
-}
