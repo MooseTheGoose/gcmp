@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <string>
 #include <ctype.h>
+#include <time.h>
 
 #include "compress.cpp"
 #include "debug.cpp"
@@ -173,7 +174,7 @@ int main(int argc, char *argv[])
             { fprintf(stderr, "Unknown option '%s'\r\n", carg); 
               exit(-1); }
 
-            lz_info = settings[carg[2] - '0'];
+            lz_info = settings[carg[1] - '0'];
             prog_info.flags |= COMPLEVEL_FLAG;
         }
         else if(*carg != '-') 
@@ -202,6 +203,12 @@ int main(int argc, char *argv[])
         fprintf(stderr, "File size >= 16 MiB. Unable to compress\r\n");
         exit(-1);
     }
+    if(!bytes.size()) 
+    { fprintf(stderr, "Empty file. Nothing to compress\r\n.");
+      exit(-1); }
+
+    fprintf(stderr, "Compressing...\r\n");
+    clock_t start = clock();
 
     switch(prog_info.compress_mode)
     {
@@ -253,6 +260,13 @@ int main(int argc, char *argv[])
                  exit(-1);
              }
 
+             if(!root->left)
+             { 
+               fprintf(stderr, "Root is data node in huffman. Can't compress.\r\n"
+                               "Use RL or loop instead.\r\n"); 
+               exit(-1); 
+             }
+
              encoding = HuffmanEncode(root, bitstream);
              header = 0x20 | prog_info.data_size | bytes.size() << 8;
              break;
@@ -281,6 +295,18 @@ int main(int argc, char *argv[])
     std::vector<uint32_t> encoding_ints = Bytes2Ints(encoding);
     encoding_ints.insert(encoding_ints.begin(), header);
     encoding = Ints2Bytes(encoding_ints);
+
+    clock_t end = clock();
+
+    fprintf(stderr,
+            "Compression done\r\n"
+            "Bytes uncompressed: %d\r\n"
+            "Bytes compressed:   %d\r\n"
+            "Compression rate:   %f%%\r\n"
+            "Time elapsed:       %f s\r\n",
+            bytes.size(), encoding.size(),
+            (1.0f - (float)(encoding.size())/bytes.size()) * 100.0f,
+            (float)(end - start) / CLOCKS_PER_SEC);
 
     switch(prog_info.output_mode)
     {

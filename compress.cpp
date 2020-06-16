@@ -3,6 +3,7 @@
 #include <vector>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 
 struct RLRecord
 {
@@ -155,6 +156,8 @@ std::vector<LZRecord> LZCompress(const std::vector<char> bytes, const LZInfo inf
     LZRecord curr_record;
     int32_t end = bytes.size();
     const char *data = bytes.data();
+    clock_t start_time = clock(),
+            end_time;
 
     while(end > 0)
     {
@@ -190,6 +193,26 @@ std::vector<LZRecord> LZCompress(const std::vector<char> bytes, const LZInfo inf
             curr_record.data.byte = data[end-1];
             records.push_back(curr_record);
             end--;
+        }
+
+        end_time = clock();
+        if((end_time - start_time) > CLOCKS_PER_SEC)
+        {
+            float progress = 1.0f - (float)(end) / bytes.size();
+            char progress_buffer[16] = 
+            { '[', ' ', ' ', ' ', ' ', ' ',
+                   ' ', ' ', ' ', ' ', ' ', ' ', ']', 0 };
+
+            for(int marker = 1; (marker - 1) < progress * 10.5f; marker++)
+            {
+                progress_buffer[marker] = '#';
+            }
+
+            fprintf(stderr, "This is taking a while...\r\n"
+                            "Progress: %s %f%%\r\n", 
+                            progress_buffer, progress * 100.0f);
+
+            start_time = end_time;
         }
     }
 
